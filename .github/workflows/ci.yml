@@ -99,12 +99,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-	         build-essential \
-	         git \
-	         clang-19 \
-	         llvm-19 \
-	         postgresql-server-dev-16
-	         
+            build-essential \
+            git \
+            clang-19 \
+            llvm-19 \
+            postgresql-server-dev-16
+
           git clone https://github.com/pgvector/pgvector.git
           cd pgvector
           make
@@ -214,19 +214,19 @@ jobs:
         working-directory: backend
         run: |
           cat <<EOF > .env
-DJANGO_SECRET_KEY=ci-secret-key
-DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+          DJANGO_SECRET_KEY=ci-secret-key
+          DJANGO_DEBUG=False
+          DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 
-DB_NAME=product_review_db
-DB_USER=product_review_user
-DB_PASSWORD=product_review_password
-DB_HOST=db
-DB_PORT=5432
+          DB_NAME=product_review_db
+          DB_USER=product_review_user
+          DB_PASSWORD=product_review_password
+          DB_HOST=db
+          DB_PORT=5432
 
-REDIS_URL=redis://redis:6379/0
-FASTAPI_BASE_URL=http://fastapi:8001
-EOF
+          REDIS_URL=redis://redis:6379/0
+          FASTAPI_BASE_URL=http://fastapi:8001
+          EOF
 
       - name: Show docker compose config
         working-directory: backend
