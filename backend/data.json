@@ -1,0 +1,207 @@
+[
+{
+  "model": "accounts.user",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$OL4SVdCQywIrg8RojGvA1C$pk78ArmAKkXCyxGriKkE60kDYZIcKTiZFg+uGRPvk3I=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "test",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-03-23T06:10:34.485Z",
+    "created_at": "2026-03-23T06:10:34.710Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "pk": 2,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$GSrqzSLgN1AHGUtwxKLFIE$jUI2JNevXCaHFZGI+BFniUkP7Gf+letBEuqruTMhEIU=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-03-27T04:38:39.398Z",
+    "created_at": "2026-03-27T04:38:39.598Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "pk": 4,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$tJMsyDY27mCLlyNZ4rUn6F$Gap2uoUi78f4aUitwufENTia+KNNaUrefU8cCZkUbv8=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "testuser3",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-03-28T06:08:33.405Z",
+    "created_at": "2026-03-28T06:08:33.599Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "products.product",
+  "pk": 1,
+  "fields": {
+    "name": "크림",
+    "description": null,
+    "price": "10000.00",
+    "image": "",
+    "created_at": "2026-03-23T06:11:29.292Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 2,
+  "fields": {
+    "name": "테스트 제품",
+    "description": "설명입니다",
+    "price": "12000.00",
+    "image": "",
+    "created_at": "2026-03-24T06:49:06.105Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 3,
+  "fields": {
+    "name": "테스트 상품",
+    "description": "리뷰 테스트용 상품",
+    "price": "10000.00",
+    "image": "",
+    "created_at": "2026-03-27T04:38:54.263Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 4,
+  "fields": {
+    "name": "테스트 상품",
+    "description": "리뷰 테스트용 상품",
+    "price": "10000.00",
+    "image": "",
+    "created_at": "2026-03-27T04:52:50.306Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 5,
+  "fields": {
+    "name": "테스트 상품",
+    "description": "리뷰 테스트용 상품",
+    "price": "10000.00",
+    "image": "",
+    "created_at": "2026-03-27T05:07:14.349Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 6,
+  "fields": {
+    "name": "테스트 상품1",
+    "description": "리뷰 테스트용 상품",
+    "price": "10000.00",
+    "image": "products/test1.jpeg",
+    "created_at": "2026-03-27T05:11:20.676Z"
+  }
+},
+{
+  "model": "reviews.review",
+  "pk": 2,
+  "fields": {
+    "user": 2,
+    "product": 3,
+    "content": "테스트 리뷰입니다.",
+    "rating": 5,
+    "is_public": true,
+    "created_at": "2026-03-27T04:39:10.332Z",
+    "updated_at": "2026-03-27T04:39:10.332Z"
+  }
+},
+{
+  "model": "reviews.review",
+  "pk": 3,
+  "fields": {
+    "user": 2,
+    "product": 4,
+    "content": "테스트 리뷰입니다.",
+    "rating": 5,
+    "is_public": true,
+    "created_at": "2026-03-27T04:53:00.691Z",
+    "updated_at": "2026-03-27T04:53:00.691Z"
+  }
+},
+{
+  "model": "reviews.review",
+  "pk": 4,
+  "fields": {
+    "user": 2,
+    "product": 5,
+    "content": "테스트 리뷰입니다.",
+    "rating": 5,
+    "is_public": true,
+    "created_at": "2026-03-27T05:07:20.649Z",
+    "updated_at": "2026-03-27T05:07:20.649Z"
+  }
+},
+{
+  "model": "reviews.review",
+  "pk": 5,
+  "fields": {
+    "user": 2,
+    "product": 6,
+    "content": "테스트 리뷰입니다.",
+    "rating": 5,
+    "is_public": true,
+    "created_at": "2026-03-27T05:11:27.739Z",
+    "updated_at": "2026-03-27T05:11:27.739Z"
+  }
+},
+{
+  "model": "reviews.reviewai",
+  "pk": 1,
+  "fields": {
+    "review": 4,
+    "sentiment": "positive",
+    "confidence": 0.97,
+    "keywords": [
+      "배송",
+      "품질",
+      "만족"
+    ],
+    "created_at": "2026-03-27T05:07:32.738Z"
+  }
+},
+{
+  "model": "reviews.reviewai",
+  "pk": 2,
+  "fields": {
+    "review": 5,
+    "sentiment": "positive",
+    "confidence": 0.97,
+    "keywords": [
+      "배송",
+      "품질",
+      "만족"
+    ],
+    "created_at": "2026-03-27T05:11:34.450Z"
+  }
+}
+]

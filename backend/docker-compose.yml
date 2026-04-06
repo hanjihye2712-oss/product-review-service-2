@@ -1,0 +1,89 @@
+version: "3.9"
+
+services:
+
+  # 1️⃣ DB 먼저 (가장 먼저 준비되어야 함)
+  db:
+    image: ankane/pgvector:v0.5.1   # ✅ 변경
+    container_name: product_review_postgres
+    environment:
+      POSTGRES_DB: product_review_db
+      POSTGRES_USER: product_review_user
+      POSTGRES_PASSWORD: product_review_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # 데이터 저장
+    networks:
+      - app-network
+
+  # 2️⃣ Redis (Celery가 사용할 큐)
+  redis:
+    image: redis:7
+    container_name: redis-server
+    restart: always
+    ports:
+      - "6379:6379"                         # Redis 기본 포트
+    networks:
+      - app-network
+
+  # 3️⃣ Django (웹 서버)
+  web:
+    build: .
+    container_name: drf-web
+    command: python manage.py runserver 0.0.0.0:8000  # 서버 실행
+    restart: always
+    volumes:
+      - .:/app                                # 코드 동기화
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env                                  # 환경변수 적용
+    depends_on:
+      - db                                    # DB 먼저 필요
+      - redis                                 # Redis 먼저 필요
+    networks:
+      - app-network
+
+  # 4️⃣ FastAPI (AI 서버)
+  fastapi:
+    build:
+      context: ../ai-server
+    container_name: fastapi-server
+    command: uvicorn main:app --host 0.0.0.0 --port 8001  # AI 서버 실행
+    restart: always
+    volumes:
+      - ../ai-server:/app
+    ports:
+      - "8001:8001"
+    networks:
+      - app-network
+
+  # 5️⃣ Celery (가장 마지막, 모든 서비스 필요)
+  celery:
+    build: .
+    container_name: celery-worker
+    command: celery -A mysite worker --loglevel=info --pool=solo  # 작업 실행
+    restart: always
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - db        # DB 필요
+      - redis     # 큐 필요
+      - web       # Django 필요
+      - fastapi   # AI 서버 필요
+    networks:
+      - app-network
+
+
+# 🔽 DB 데이터 영구 저장
+volumes:
+  postgres_data:
+
+
+# 🔽 컨테이너끼리 통신하는 내부 네트워크
+networks:
+  app-network:
+    driver: bridge

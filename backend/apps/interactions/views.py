@@ -1,246 +1,177 @@
-# DRF ViewSet
-# → list, create 같은 API 기능을 클래스 단위로 묶어서 관리
-from rest_framework.viewsets import ViewSet
-
-# API 응답을 JSON 형태로 반환
-from rest_framework.response import Response
-
-# 현재 코드에서는 사용하지 않음
-# retrieve, update, destroy를 만들 때 주로 사용
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
-# 리뷰 상호작용 관련 모델
-from .models import (
-    ReviewLike,
-    ReviewBookmark,
-    ReviewComment,
-    ReviewReport,
-)
+from rest_framework import permissions, status, viewsets, generics
+from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-# 각 모델을 JSON으로 변환하고 입력값을 검증하는 Serializer
+from .models import Review, ReviewImage
 from .serializers import (
-    ReviewLikeSerializer,
-    ReviewBookmarkSerializer,
-    ReviewCommentSerializer,
-    ReviewReportSerializer,
+    ReviewSerializer,
+    ReviewImageSerializer,
+    ReviewAISerializer,
 )
 
 
-class ReviewLikeViewSet(ViewSet):
+class ReviewViewSet(viewsets.ModelViewSet):
     """
-    리뷰 좋아요 API
+    리뷰 CRUD API
 
-    기능:
-    - list   : 전체 좋아요 목록 조회
-    - create : 좋아요 생성
-    """
-
-    def list(self, request):
-        """
-        좋아요 목록 조회 API
-
-        흐름:
-        1. DB에서 모든 좋아요 조회
-        2. Serializer로 JSON 변환
-        3. Response 반환
-        """
-
-        # 1️⃣ 전체 좋아요 데이터 조회
-        likes = ReviewLike.objects.all()
-
-        # 2️⃣ 여러 개 데이터이므로 many=True
-        serializer = ReviewLikeSerializer(likes, many=True)
-
-        # 3️⃣ JSON 응답 반환
-        return Response(serializer.data)
-
-    def create(self, request):
-        """
-        좋아요 생성 API
-
-        흐름:
-        4. 요청 데이터 받기
-        5. Serializer로 검증
-        6. 유효하면 DB 저장
-        7. 결과 반환
-        """
-
-        # 1️⃣ 요청 데이터를 Serializer에 전달
-        serializer = ReviewLikeSerializer(data=request.data)
-
-        # 2️⃣ 유효성 검사
-        if serializer.is_valid():
-
-            # 3️⃣ DB 저장
-            serializer.save()
-
-            # 4️⃣ 저장된 데이터 반환
-            return Response(serializer.data)
-
-        # ❌ 검증 실패 시 에러 반환
-        return Response(serializer.errors)
-
-
-class ReviewBookmarkViewSet(ViewSet):
-    """
-    리뷰 북마크 API
-
-    기능:
-    - list   : 전체 북마크 목록 조회
-    - create : 북마크 생성
+    지원 기능
+    - GET    /api/reviews/                : 리뷰 목록
+    - GET    /api/reviews/?product=1      : 특정 상품 리뷰 목록
+    - GET    /api/reviews/<id>/           : 리뷰 상세
+    - POST   /api/reviews/                : 리뷰 생성
+    - PATCH  /api/reviews/<id>/           : 리뷰 수정
+    - DELETE /api/reviews/<id>/           : 리뷰 삭제
     """
 
-    def list(self, request):
+    # =========================================================
+    # [인터랙티브 관련]
+    # ReviewSerializer 안에
+    # likes_count, bookmarks_count, is_liked, is_bookmarked
+    # 가 추가되어 있다면,
+    # 이 ViewSet의 목록/상세 응답에도 그 값들이 함께 내려가게 됩니다.
+    # 즉, View 코드 자체보다 serializer 확장의 영향이 반영되는 부분입니다.
+    # =========================================================
+    serializer_class = ReviewSerializer
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_permissions(self):
         """
-        북마크 목록 조회 API
-
-        흐름:
-        1. DB에서 모든 북마크 조회
-        2. Serializer로 JSON 변환
-        3. Response 반환
+        조회는 누구나 가능,
+        생성/수정/삭제는 로그인 사용자만 가능하게 설정
         """
+        if self.action in ["list", "retrieve"]:
+            permission_classes = [permissions.AllowAny]
+        else:
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
-        # 1️⃣ 전체 북마크 조회
-        bookmarks = ReviewBookmark.objects.all()
-
-        # 2️⃣ 여러 개 데이터 직렬화
-        serializer = ReviewBookmarkSerializer(bookmarks, many=True)
-
-        # 3️⃣ JSON 응답 반환
-        return Response(serializer.data)
-
-    def create(self, request):
+    def get_queryset(self):
         """
-        북마크 생성 API
-
-        흐름:
-        4. 요청 데이터 받기
-        5. Serializer 검증
-        6. 유효하면 저장
-        7. 결과 반환
+        기본적으로 공개 리뷰만 조회하고,
+        product 쿼리파라미터가 있으면 해당 상품 리뷰만 필터링합니다.
         """
+        queryset = (
+            Review.objects
+            .select_related("user", "product", "ai_result")
+            .prefetch_related("images")
+            .filter(is_public=True)
+            .order_by("-created_at")
+        )
 
-        # 1️⃣ 요청 데이터 전달
-        serializer = ReviewBookmarkSerializer(data=request.data)
+        product_id = self.request.query_params.get("product")
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
 
-        # 2️⃣ 유효성 검사
-        if serializer.is_valid():
+        return queryset
 
-            # 3️⃣ 저장
-            serializer.save()
+    def perform_create(self, serializer):
+        """
+        로그인 사용자의 리뷰를 저장합니다.
+        """
+        if self.request.user.is_authenticated:
+            serializer.save(user=self.request.user, is_public=True)
+        else:
+            raise ValidationError("리뷰 작성은 로그인 후 가능합니다.")
 
-            # 4️⃣ 결과 반환
-            return Response(serializer.data)
+    def destroy(self, request, *args, **kwargs):
+        """
+        삭제 응답 메시지 커스텀
+        """
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"message": "deleted"},
+            status=status.HTTP_200_OK
+        )
 
-        # ❌ 검증 실패
-        return Response(serializer.errors)
 
-
-class ReviewCommentViewSet(ViewSet):
+# =============================================================
+# [인터랙티브 관련]
+# 사용자 본인이 작성한 리뷰만 따로 조회하는 기능
+# 좋아요/북마크와 직접 토글하는 API는 아니지만,
+# 인터랙션이 붙은 리뷰 데이터를 "내 리뷰" 기준으로 확인하는 흐름에서
+# 함께 사용될 수 있는 확장 기능입니다.
+# =============================================================
+class MyReviewListAPIView(generics.ListAPIView):
     """
-    리뷰 댓글 API
-
-    기능:
-    - list   : 전체 댓글 목록 조회
-    - create : 댓글 생성
+    내 리뷰 목록
+    GET /api/reviews/my/
     """
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-    def list(self, request):
-        """
-        댓글 목록 조회 API
-
-        흐름:
-        1. DB에서 모든 댓글 조회
-        2. Serializer 변환
-        3. Response 반환
-        """
-
-        # 1️⃣ 전체 댓글 조회
-        comments = ReviewComment.objects.all()
-
-        # 2️⃣ JSON 변환
-        serializer = ReviewCommentSerializer(comments, many=True)
-
-        # 3️⃣ 응답 반환
-        return Response(serializer.data)
-
-    def create(self, request):
-        """
-        댓글 생성 API
-
-        흐름:
-        4. 요청 데이터 받기
-        5. Serializer 검증
-        6. 유효하면 저장
-        7. 결과 반환
-        """
-
-        # 1️⃣ 요청 데이터 전달
-        serializer = ReviewCommentSerializer(data=request.data)
-
-        # 2️⃣ 유효성 검사
-        if serializer.is_valid():
-
-            # 3️⃣ 저장
-            serializer.save()
-
-            # 4️⃣ 저장 결과 반환
-            return Response(serializer.data)
-
-        # ❌ 검증 실패
-        return Response(serializer.errors)
+    def get_queryset(self):
+        return (
+            Review.objects
+            .select_related("user", "product", "ai_result")
+            .prefetch_related("images")
+            .filter(user=self.request.user)
+            .order_by("-created_at")
+        )
 
 
-class ReviewReportViewSet(ViewSet):
+class ReviewImageUploadAPIView(APIView):
     """
-    리뷰 신고 API
-
-    기능:
-    - list   : 전체 신고 목록 조회
-    - create : 신고 생성
+    특정 리뷰에 이미지 추가 업로드
+    POST /api/reviews/<review_id>/images/
     """
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
-    def list(self, request):
-        """
-        신고 목록 조회 API
+    def post(self, request, review_id):
+        review = get_object_or_404(Review, id=review_id)
 
-        흐름:
-        1. DB에서 모든 신고 조회
-        2. Serializer 변환
-        3. Response 반환
-        """
+        # 본인 리뷰에만 이미지 추가 가능
+        if review.user != request.user:
+            return Response(
+                {"detail": "본인 리뷰에만 이미지를 추가할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-        # 1️⃣ 전체 신고 목록 조회
-        reports = ReviewReport.objects.all()
+        files = request.FILES.getlist("uploaded_images")
 
-        # 2️⃣ JSON 변환
-        serializer = ReviewReportSerializer(reports, many=True)
+        if not files:
+            return Response(
+                {"detail": "업로드할 이미지가 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # 3️⃣ 응답 반환
-        return Response(serializer.data)
+        created_images = []
+        for file in files:
+            image = ReviewImage.objects.create(
+                review=review,
+                image=file
+            )
+            created_images.append(image)
 
-    def create(self, request):
-        """
-        신고 생성 API
+        serializer = ReviewImageSerializer(created_images, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        흐름:
-        4. 요청 데이터 받기
-        5. Serializer 검증
-        6. 유효하면 저장
-        7. 결과 반환
-        """
 
-        # 1️⃣ 요청 데이터 전달
-        serializer = ReviewReportSerializer(data=request.data)
+class ReviewAIResultAPIView(APIView):
+    """
+    특정 리뷰의 AI 분석 결과 조회
+    GET /api/reviews/<review_id>/ai/
+    """
+    permission_classes = [permissions.AllowAny]
 
-        # 2️⃣ 유효성 검사
-        if serializer.is_valid():
+    def get(self, request, review_id):
+        review = get_object_or_404(
+            Review.objects.select_related("ai_result"),
+            id=review_id
+        )
 
-            # 3️⃣ 저장
-            serializer.save()
+        if not hasattr(review, "ai_result"):
+            return Response(
+                {"detail": "AI 분석 결과가 없습니다."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-            # 4️⃣ 결과 반환
-            return Response(serializer.data)
-
-        # ❌ 검증 실패
-        return Response(serializer.errors)
+        serializer = ReviewAISerializer(review.ai_result)
+        return Response(serializer.data, status=status.HTTP_200_OK)

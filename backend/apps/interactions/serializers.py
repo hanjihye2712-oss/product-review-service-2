@@ -1,101 +1,164 @@
 from rest_framework import serializers
-from .models import (
-    ReviewLike,
-    ReviewBookmark,
-    ReviewComment,
-    ReviewReport,
-)
+
+from .models import Review, ReviewImage
 
 
-# 좋아요 Serializer
-class ReviewLikeSerializer(serializers.ModelSerializer):
-    """
-    리뷰 좋아요 Serializer
-
-    역할:
-    1️⃣ 입력 검증
-        - user, review 값이 정상인지 검증
-        - 중복 좋아요는 모델(unique_together)에서 제한
-
-    2️⃣ 출력 변환
-        - 좋아요 데이터를 JSON으로 변환
-    """
+class ReviewImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = ReviewLike
+        model = ReviewImage
         fields = [
             "id",
-            "user",       # FK (입력 검증 대상)
-            "review",     # FK (입력 검증 대상)
+            "image",
+            "image_url",
             "created_at",
         ]
 
+    def get_image_url(self, obj):
+        request = self.context.get("request")
 
-# 북마크 Serializer
-class ReviewBookmarkSerializer(serializers.ModelSerializer):
-    """
-    리뷰 북마크 Serializer
+        if not obj.image:
+            return None
 
-    역할:
-    - user와 review 관계 데이터 검증
-    - 북마크 데이터 JSON 변환
-    """
+        try:
+            image_url = obj.image.url
+        except Exception:
+            return None
 
-    class Meta:
-        model = ReviewBookmark
-        fields = [
-            "id",
-            "user",
-            "review",
-            "created_at",
-        ]
+        if request:
+            return request.build_absolute_uri(image_url)
+
+        return image_url
 
 
-# 댓글 Serializer
-class ReviewCommentSerializer(serializers.ModelSerializer):
-    """
-    리뷰 댓글 Serializer
-
-    역할:
-    1️⃣ 입력 검증
-        - user, review, content 검증
-        - 댓글 내용(content) 필수값
-
-    2️⃣ 출력 변환
-        - 댓글 데이터를 JSON으로 반환
-    """
-
-    class Meta:
-        model = ReviewComment
-        fields = [
-            "id",
-            "user",
-            "review",
-            "content",   # 입력 데이터 (검증 대상)
-            "created_at",
-        ]
+class ReviewAISerializer(serializers.Serializer):
+    sentiment = serializers.CharField(read_only=True)
+    score = serializers.FloatField(read_only=True)
+    summary = serializers.CharField(read_only=True, required=False)
+    keywords = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True,
+        required=False
+    )
 
 
-# 신고 Serializer
-class ReviewReportSerializer(serializers.ModelSerializer):
-    """
-    리뷰 신고 Serializer
+class ReviewSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        source="user.username",
+        read_only=True
+    )
 
-    역할:
-    1️⃣ 입력 검증
-        - user, review, reason 검증
-        - 신고 사유(reason) 필수값
+    # =========================================================
+    # [인터랙티브 추가]
+    # 좋아요 개수 표시용 필드
+    # =========================================================
+    likes_count = serializers.SerializerMethodField()
 
-    2️⃣ 출력 변환
-        - 신고 데이터를 JSON으로 반환
-    """
+    # =========================================================
+    # [인터랙티브 추가]
+    # 북마크 개수 표시용 필드
+    # =========================================================
+    bookmarks_count = serializers.SerializerMethodField()
+
+    # =========================================================
+    # [인터랙티브 추가]
+    # 현재 로그인 사용자가 이 리뷰에 좋아요를 눌렀는지 여부
+    # =========================================================
+    is_liked = serializers.SerializerMethodField()
+
+    # =========================================================
+    # [인터랙티브 추가]
+    # 현재 로그인 사용자가 이 리뷰를 북마크했는지 여부
+    # =========================================================
+    is_bookmarked = serializers.SerializerMethodField()
 
     class Meta:
-        model = ReviewReport
+        model = Review
         fields = [
             "id",
             "user",
-            "review",
-            "reason",   # 입력 데이터 (검증 대상)
+            "username",
+            "product",
+            "content",
+            "rating",
+            "is_public",
             "created_at",
+
+            # =================================================
+            # [인터랙티브 추가]
+            # 좋아요 수
+            # =================================================
+            "likes_count",
+
+            # =================================================
+            # [인터랙티브 추가]
+            # 북마크 수
+            # =================================================
+            "bookmarks_count",
+
+            # =================================================
+            # [인터랙티브 추가]
+            # 현재 유저 좋아요 여부
+            # =================================================
+            "is_liked",
+
+            # =================================================
+            # [인터랙티브 추가]
+            # 현재 유저 북마크 여부
+            # =================================================
+            "is_bookmarked",
         ]
+        read_only_fields = [
+            "id",
+            "user",
+            "username",
+            "created_at",
+
+            # =================================================
+            # [인터랙티브 추가]
+            # 계산해서 보여주는 값이라 읽기 전용
+            # =================================================
+            "likes_count",
+            "bookmarks_count",
+            "is_liked",
+            "is_bookmarked",
+        ]
+
+    # =========================================================
+    # [인터랙티브 추가]
+    # 해당 리뷰의 좋아요 개수 반환
+    # related_name='likes' 기준
+    # =========================================================
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    # =========================================================
+    # [인터랙티브 추가]
+    # 해당 리뷰의 북마크 개수 반환
+    # related_name='bookmarks' 기준
+    # =========================================================
+    def get_bookmarks_count(self, obj):
+        return obj.bookmarks.count()
+
+    # =========================================================
+    # [인터랙티브 추가]
+    # 현재 로그인한 사용자가 이 리뷰에 좋아요를 눌렀는지 확인
+    # 비로그인 사용자는 False
+    # =========================================================
+    def get_is_liked(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.likes.filter(user=request.user).exists()
+
+    # =========================================================
+    # [인터랙티브 추가]
+    # 현재 로그인한 사용자가 이 리뷰를 북마크했는지 확인
+    # 비로그인 사용자는 False
+    # =========================================================
+    def get_is_bookmarked(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.bookmarks.filter(user=request.user).exists()
