@@ -66,6 +66,9 @@ INSTALLED_APPS = [
 
     # pgvector
     "pgvector.django",
+
+    # storages
+    "storages",
 ]
 
 MIDDLEWARE = [
@@ -259,6 +262,3 @@ STORAGES = {
     },
 }
 
-INSTALLED_APPS = [
-	"storages", # ✅ 추가
-]
