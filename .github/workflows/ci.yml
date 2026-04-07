@@ -234,7 +234,7 @@ jobs:
           DB_USER=product_review_user
           DB_PASSWORD=product_review_password
           DB_HOST=db
-          DB_PORT=5434
+          DB_PORT=5432
 
           REDIS_URL=redis://redis:6379/0
           FASTAPI_BASE_URL=http://fastapi:8001
