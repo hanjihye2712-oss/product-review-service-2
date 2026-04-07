@@ -127,6 +127,7 @@ jobs:
         run: |
           psql \
             -h 127.0.0.1 \
+            -p 5434 \
             -U product_review_user \
             -d product_review_db \
             -c "CREATE EXTENSION IF NOT EXISTS vector;"
