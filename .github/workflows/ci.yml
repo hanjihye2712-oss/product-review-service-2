@@ -52,6 +52,17 @@ jobs:
 
       PYTHONUNBUFFERED: "1"
 
+      # ===============================
+      # [추가] S3 환경변수
+      # - CI에서도 settings.py가 S3 관련 값을 읽을 수 있도록 추가
+      # - 실제 AWS 접속 목적이 아니라, settings import / admin 렌더링용
+      # ===============================
+      AWS_ACCESS_KEY_ID: dummy
+      AWS_SECRET_ACCESS_KEY: dummy
+      AWS_STORAGE_BUCKET_NAME_STATIC: product-review-static-hanjihye
+      AWS_STORAGE_BUCKET_NAME_MEDIA: product-review-media-hanjihye
+      AWS_S3_REGION_NAME: ap-northeast-2
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -100,10 +111,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
-            git \
-            clang-19 \
-            llvm-19 \
-            postgresql-server-dev-16
+              git \
+              clang-19 \
+              llvm-19 \
+              postgresql-server-dev-16
 
           git clone https://github.com/pgvector/pgvector.git
           cd pgvector
@@ -116,7 +127,6 @@ jobs:
         run: |
           psql \
             -h 127.0.0.1 \
-            -p 5434 \
             -U product_review_user \
             -d product_review_db \
             -c "CREATE EXTENSION IF NOT EXISTS vector;"
@@ -223,10 +233,20 @@ jobs:
           DB_USER=product_review_user
           DB_PASSWORD=product_review_password
           DB_HOST=db
-          DB_PORT=5432
+          DB_PORT=5434
 
           REDIS_URL=redis://redis:6379/0
           FASTAPI_BASE_URL=http://fastapi:8001
+
+          # ===============================
+          # [추가] S3 환경변수
+          # - docker compose 통합 테스트에서도 settings.py가 S3 값을 읽도록 추가
+          # ===============================
+          AWS_ACCESS_KEY_ID=dummy
+          AWS_SECRET_ACCESS_KEY=dummy
+          AWS_STORAGE_BUCKET_NAME_STATIC=product-review-static
+          AWS_STORAGE_BUCKET_NAME_MEDIA=product-review-media
+          AWS_S3_REGION_NAME=ap-northeast-2
           EOF
 
       - name: Show docker compose config

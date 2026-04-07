@@ -43,3 +43,6 @@ boto3
 django-storages
 django-prometheus
 gunicorn
+
+boto3  
+django-storages
